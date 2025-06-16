@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -51,53 +52,57 @@
             text-decoration: underline;
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Sign Language Video Database</h1>
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="Search by word or tag...">
-            <select id="languageSelect">
-                <option value="EN">English</option>
-                <option value="FR">French</option>
-                <option value="KR">Kreol</option>
-            </select>
-        </div>
-        <div class="results" id="results"></div>
-    </div>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        google.charts.load('current', {'packages':['table']});
+        google.charts.setOnLoadCallback(init);
 
-    <script>
-        const apiKey = "patyIOo1RpehiOfc2";
-        const baseId = "appZVCZ1eALkm8fQq";
-        const tableName = "MSLWords";
+        let dataTable;
+        let dataView;
 
-        document.getElementById('searchInput').addEventListener('input', fetchResults);
-        document.getElementById('languageSelect').addEventListener('change', fetchResults);
-
-        async function fetchResults() {
-            const query = document.getElementById('searchInput').value;
-            const language = document.getElementById('languageSelect').value;
-            const url = `https://api.airtable.com/v0/${baseId}/${tableName}?filterByFormula=OR(FIND(LOWER('${query}'), LOWER({WordID})), FIND(LOWER('${query}'), LOWER({Tags})))`;
-
-            const response = await fetch(url, {
-                headers: {
-                    Authorization: `Bearer ${apiKey}`
-                }
-            });
-
-            const data = await response.json();
-            displayResults(data.records, language);
+        function init() {
+            const query = new google.visualization.Query('https://docs.google.com/spreadsheets/d/e/2PACX-1vRRjfB-e3F0SaAAfI-xxSVbTyyIIOavQLipLnSIPJwpflBFKjepg7ZUwub1SwY4QiDyXMcM3UD8aFNB/pubhtml');
+            query.send(handleQueryResponse);
         }
 
-        function displayResults(records, language) {
+        function handleQueryResponse(response) {
+            if (response.isError()) {
+                console.error('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+                return;
+            }
+
+            dataTable = response.getDataTable();
+            dataView = new google.visualization.DataView(dataTable);
+            fetchResults();
+        }
+
+        function fetchResults() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const language = document.getElementById('languageSelect').value;
+
+            const filters = [];
+            for (let i = 0; i < dataTable.getNumberOfRows(); i++) {
+                const word = dataTable.getValue(i, 0).toLowerCase();
+                const tags = dataTable.getValue(i, 14).toLowerCase();
+
+                if (word.includes(query) || tags.includes(query)) {
+                    filters.push(i);
+                }
+            }
+
+            dataView.setRows(filters);
+            displayResults(language);
+        }
+
+        function displayResults(language) {
             const resultsContainer = document.getElementById('results');
             resultsContainer.innerHTML = '';
 
-            records.forEach(record => {
-                const word = record.fields.WordID;
-                const definition = record.fields[`Definition${language}`];
-                const example = record.fields[`Example${language}`];
-                const links = [record.fields.Link1, record.fields.Link2, record.fields.Link3].filter(link => link);
+            for (let i = 0; i < dataView.getNumberOfRows(); i++) {
+                const word = dataView.getValue(i, 0);
+                const definition = dataView.getValue(i, language === 'EN' ? 4 : language === 'FR' ? 5 : 6);
+                const example = dataView.getValue(i, language === 'EN' ? 7 : language === 'FR' ? 8 : 9);
+                const links = [dataView.getValue(i, 10), dataView.getValue(i, 11), dataView.getValue(i, 12)].filter(link => link);
 
                 const resultItem = document.createElement('div');
                 resultItem.classList.add('result-item');
@@ -112,8 +117,22 @@
                 `;
 
                 resultsContainer.appendChild(resultItem);
-            });
+            }
         }
     </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Sign Language Video Database</h1>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search by word or tag..." oninput="fetchResults()">
+            <select id="languageSelect" onchange="fetchResults()">
+                <option value="EN">English</option>
+                <option value="FR">French</option>
+                <option value="KR">Kreol</option>
+            </select>
+        </div>
+        <div class="results" id="results"></div>
+    </div>
 </body>
-</html>
+</html>    
