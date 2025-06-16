@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -58,10 +57,9 @@
         google.charts.setOnLoadCallback(init);
 
         let dataTable;
-        let dataView;
 
         function init() {
-            const query = new google.visualization.Query('https://docs.google.com/spreadsheets/d/e/2PACX-1vRRjfB-e3F0SaAAfI-xxSVbTyyIIOavQLipLnSIPJwpflBFKjepg7ZUwub1SwY4QiDyXMcM3UD8aFNB/pubhtml');
+            const query = new google.visualization.Query('https://docs.google.com/spreadsheets/d/e/2PACX-1vRRjfB-e3F0SaAAfI-xxSVbTyyIIOavQLipLnSIPJwpflBFKjepg7ZUwub1SwY4QiDyXMcM3UD8aFNB/gviz/tq?gid=0');
             query.send(handleQueryResponse);
         }
 
@@ -70,45 +68,36 @@
                 console.error('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
                 return;
             }
-
             dataTable = response.getDataTable();
-            dataView = new google.visualization.DataView(dataTable);
             fetchResults();
         }
 
         function fetchResults() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
             const language = document.getElementById('languageSelect').value;
-
-            const filters = [];
-            for (let i = 0; i < dataTable.getNumberOfRows(); i++) {
-                const word = dataTable.getValue(i, 0).toLowerCase();
-                const tags = dataTable.getValue(i, 14).toLowerCase();
-
-                if (word.includes(query) || tags.includes(query)) {
-                    filters.push(i);
-                }
-            }
-
-            dataView.setRows(filters);
-            displayResults(language);
-        }
-
-        function displayResults(language) {
             const resultsContainer = document.getElementById('results');
             resultsContainer.innerHTML = '';
 
-            for (let i = 0; i < dataView.getNumberOfRows(); i++) {
-                const word = dataView.getValue(i, 0);
-                const definition = dataView.getValue(i, language === 'EN' ? 4 : language === 'FR' ? 5 : 6);
-                const example = dataView.getValue(i, language === 'EN' ? 7 : language === 'FR' ? 8 : 9);
-                const links = [dataView.getValue(i, 10), dataView.getValue(i, 11), dataView.getValue(i, 12)].filter(link => link);
+            const filteredRows = [];
+            for (let i = 0; i < dataTable.getNumberOfRows(); i++) {
+                const wordID = dataTable.getValue(i, 0).toLowerCase();
+                const tags = dataTable.getValue(i, 13).toLowerCase();
+                if (wordID.includes(searchInput) || tags.includes(searchInput)) {
+                    filteredRows.push(i);
+                }
+            }
+
+            filteredRows.forEach(rowIndex => {
+                const wordID = dataTable.getValue(rowIndex, 0);
+                const definition = dataTable.getValue(rowIndex, language === 'EN' ? 4 : language === 'FR' ? 5 : 6);
+                const example = dataTable.getValue(rowIndex, language === 'EN' ? 7 : language === 'FR' ? 8 : 9);
+                const links = [dataTable.getValue(rowIndex, 10), dataTable.getValue(rowIndex, 11), dataTable.getValue(rowIndex, 12)].filter(link => link);
 
                 const resultItem = document.createElement('div');
                 resultItem.classList.add('result-item');
 
                 resultItem.innerHTML = `
-                    <h2>${word}</h2>
+                    <h2>${wordID}</h2>
                     <p><strong>Definition:</strong> ${definition}</p>
                     <p><strong>Example:</strong> ${example}</p>
                     <div class="video-links">
@@ -117,7 +106,7 @@
                 `;
 
                 resultsContainer.appendChild(resultItem);
-            }
+            });
         }
     </script>
 </head>
@@ -135,4 +124,5 @@
         <div class="results" id="results"></div>
     </div>
 </body>
-</html>    
+</html>
+
